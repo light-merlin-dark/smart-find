@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Smart find wrapper - auto-excludes noise directories
+# Bypass: --raw flag, SMART_FIND=0, or /usr/bin/find
+# Intelligent: if user explicitly searches node_modules/, don't filter it
+
+# Bypass via env var
+[[ "$SMART_FIND" == "0" ]] && exec /usr/bin/find "$@"
+
+# Check for --raw flag or explicit excluded directory search
+RAW_MODE=false
+EXCLUDED_DIRS=(node_modules .git dist build .next .nuxt target vendor .turbo .cache coverage __pycache__)
+
+for arg in "$@"; do
+  if [[ "$arg" == "--raw" ]]; then
+    RAW_MODE=true
+    break
+  fi
+
+  # Check if user is explicitly searching an excluded directory (path arguments)
+  for dir in "${EXCLUDED_DIRS[@]}"; do
+    if [[ "$arg" == *"$dir"* ]] && [[ "$arg" == ./* || "$arg" == /* || "$arg" == */* ]]; then
+      RAW_MODE=true
+      break 2
+    fi
+  done
+done
+
+# If --raw flag or explicit excluded dir search, use raw find (without --raw flag)
+if [[ "$RAW_MODE" == "true" ]]; then
+  # Filter out --raw flag if present
+  ARGS=()
+  for arg in "$@"; do
+    [[ "$arg" != "--raw" ]] && ARGS+=("$arg")
+  done
+  exec /usr/bin/find "${ARGS[@]}"
+fi
+
+# Apply smart exclusions (BSD/macOS compatible syntax)
+exec /usr/bin/find "$@" \
+  -not -path '*/node_modules/*' \
+  -not -path '*/.git/*' \
+  -not -path '*/dist/*' \
+  -not -path '*/build/*' \
+  -not -path '*/out/*' \
+  -not -path '*/.next/*' \
+  -not -path '*/.nuxt/*' \
+  -not -path '*/target/*' \
+  -not -path '*/vendor/*' \
+  -not -path '*/.turbo/*' \
+  -not -path '*/.cache/*' \
+  -not -path '*/coverage/*' \
+  -not -path '*/__pycache__/*'
