@@ -1,7 +1,29 @@
-# Smart Find
+```
+                           _
+  ___ _ __ ___   __ _ _ __| |_
+ / __| '_ ` _ \ / _` | '__| __|
+ \__ \ | | | | | (_| | |  | |_
+ |___/_| |_| |_|\__,_|_|   \__|
 
-Intelligent `find` wrapper that auto-excludes noise directories
-CLI tool • User configuration • AI-optimized
+ ███████╗██╗███╗   ██╗██████╗
+ ██╔════╝██║████╗  ██║██╔══██╗
+ █████╗  ██║██╔██╗ ██║██║  ██║
+ ██╔══╝  ██║██║╚██╗██║██║  ██║
+ ██║     ██║██║ ╚████║██████╔╝
+ ╚═╝     ╚═╝╚═╝  ╚═══╝╚═════╝
+```
+
+**Intelligent wrapper for the native `find` command**
+
+Drop-in replacement • Auto-excludes build artifacts • Works with BSD & GNU find
+
+## What It Replaces
+
+The native `find` command that ships with your OS:
+- **macOS**: BSD find (`/usr/bin/find`)
+- **Linux**: GNU findutils find (`/usr/bin/find`)
+
+This wrapper intercepts `find` calls and intelligently filters out build artifacts and dependency directories that waste time and pollute results.
 
 ## Why?
 
@@ -15,11 +37,11 @@ The standard `find` command wastes time searching massive directories you almost
 - Scripts search through irrelevant files
 - Results buried in noise
 
-## Solution
-
-Smart wrapper that intercepts `find` commands and auto-excludes noise directories, while being intelligent enough to include them when explicitly requested.
+**Solution:**
+Auto-excludes noise directories while being intelligent enough to include them when explicitly requested.
 
 **Key features:**
+- Drop-in replacement (no syntax changes)
 - User-configurable ignore list
 - Intelligent detection (explicit paths bypass filters)
 - Multiple bypass options
@@ -133,12 +155,16 @@ find ./node_modules -type f | head -5       # Should show results
 
 ## How It Works
 
-1. Script is placed at `~/.local/bin/find`
-2. `~/.local/bin` is added to the beginning of your PATH
-3. When you type `find`, the shell finds our script first
-4. Script checks if you're explicitly searching excluded directories
-5. If yes, uses `/usr/bin/find` (original)
-6. If no, applies exclusion filters automatically
+This is a **drop-in replacement** that intercepts `find` commands:
+
+1. Wrapper script installed at `~/.local/bin/find`
+2. `~/.local/bin` prepended to your PATH (higher priority than `/usr/bin`)
+3. When you type `find`, the shell finds our wrapper first
+4. Wrapper analyzes your command:
+   - **Explicit paths** to excluded dirs → pass through to native find
+   - **General searches** → add exclusion filters automatically
+5. Native `find` at `/usr/bin/find` does the actual work
+6. You get faster, cleaner results with zero syntax changes
 
 ## Rollback
 
@@ -153,10 +179,21 @@ rm ~/.local/bin/find
 # Original find at /usr/bin/find takes over immediately
 ```
 
-## Platform Support
+## OS Compatibility
 
-- macOS (BSD find) ✓
-- Linux (GNU find) ✓
+**Works anywhere the native `find` command exists:**
+
+| OS | Find Version | Status |
+|---|---|---|
+| macOS | BSD find | ✓ Tested |
+| Linux (Debian/Ubuntu) | GNU findutils | ✓ Tested |
+| Linux (RHEL/Fedora/Arch) | GNU findutils | ✓ Compatible |
+| Unix-like systems | BSD/GNU find | ✓ Should work |
+
+**Requirements:**
+- Bash shell
+- Native `find` command at `/usr/bin/find`
+- `~/.local/bin` in your PATH (setup script handles this)
 
 ## License
 
