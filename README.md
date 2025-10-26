@@ -162,10 +162,6 @@ rm ~/.local/bin/find
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
-## Contributing
+---
 
-Contributions welcome! Please feel free to submit a Pull Request.
-
-## Author
-
-Built to solve the eternal frustration of `find` drowning in node_modules.
+Built by [@EnchantedRobot](https://twitter.com/EnchantedRobot)
