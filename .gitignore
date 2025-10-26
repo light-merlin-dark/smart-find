@@ -17,3 +17,6 @@ tmp/
 .idea/
 *.swp
 *.swo
+
+docs
+Makefile

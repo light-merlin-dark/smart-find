@@ -1,21 +1,29 @@
 # Smart Find
 
-Intelligent `find` command wrapper that automatically excludes noise directories like `node_modules`, `.git`, `dist`, etc.
+Intelligent `find` wrapper that auto-excludes noise directories
+CLI tool • User configuration • AI-optimized
 
-## Problem
+## Why?
 
-The standard `find` command wastes time searching massive directories that you almost never want to search:
+The standard `find` command wastes time searching massive directories you almost never want:
 - `node_modules` (can contain 100k+ files)
 - `.git`, `dist`, `build`, `.next`, `.cache`, etc.
 
-This affects:
-- Manual terminal commands
-- AI assistant tools (Claude Code, etc.)
-- Scripts and automation
+**Impact:**
+- Manual terminal commands slow down
+- AI assistant tools waste time (Claude Code, etc.)
+- Scripts search through irrelevant files
+- Results buried in noise
 
 ## Solution
 
-A smart wrapper that intercepts `find` commands and automatically excludes noise directories, while being intelligent enough to include them when explicitly requested.
+Smart wrapper that intercepts `find` commands and auto-excludes noise directories, while being intelligent enough to include them when explicitly requested.
+
+**Key features:**
+- User-configurable ignore list
+- Intelligent detection (explicit paths bypass filters)
+- Multiple bypass options
+- Zero configuration required
 
 ## Features
 
@@ -39,7 +47,7 @@ SMART_FIND=0 find . -name "*.ts" # Include everything
 /usr/bin/find . -name "*.ts"     # Use original find directly
 ```
 
-### Excluded Directories
+### Default Excluded Directories
 - `node_modules`
 - `.git`
 - `dist`
@@ -54,38 +62,71 @@ SMART_FIND=0 find . -name "*.ts" # Include everything
 - `coverage`
 - `__pycache__` (Python)
 
+### Configuration Management
+
+Customize your ignore list with simple commands:
+
+```bash
+# View current configuration
+find --config          # or --list-ignored
+
+# Add custom directories to ignore
+find --add-ignore tmp
+find --add-ignore .venv
+
+# Remove custom ignores
+find --remove-ignore tmp
+```
+
+**Configuration stored at:** `~/.config/smart-find/config`
+
+**How it works:**
+- Built-in directories are always excluded (cannot be removed)
+- User additions are persistent across sessions
+- Config file is simple text (one directory per line)
+- Comments supported (lines starting with #)
+
+**Example config file:**
+```
+# User-defined ignored directories
+tmp
+.venv
+.pytest_cache
+```
+
 ## Installation
 
 ```bash
-make install
+# Install globally
+npm install -g @light-merlin-dark/smart-find
+
+# Run setup to intercept find command
+smart-find-setup
+
+# Reload your shell
+exec zsh  # or: exec bash
 ```
 
 This will:
-1. Copy `bin/find` to `~/.local/bin/find`
+1. Copy `smart-find` to `~/.local/bin/find`
 2. Add `~/.local/bin` to your PATH in `~/.zshrc` and `~/.bashrc`
 3. Create a backup at `~/.local/bin/find.backup` if one already exists
-
-## Testing Before Install
-
-```bash
-make test
-```
-
-Runs comprehensive tests without modifying your system.
 
 ## Uninstall
 
 ```bash
-make uninstall
-```
+# Remove find interception
+find --uninstall
 
-Restores the original `find` behavior by removing `~/.local/bin/find`.
+# Remove npm package (optional)
+npm uninstall -g @light-merlin-dark/smart-find
+```
 
 ## Verification
 
 After installation:
 ```bash
-which find  # Should show: /Users/merlin/.local/bin/find
+which find  # Should show: ~/.local/bin/find
 find . -name "*.ts" | grep -c node_modules  # Should be 0
 find ./node_modules -type f | head -5       # Should show results
 ```
@@ -101,15 +142,15 @@ find ./node_modules -type f | head -5       # Should show results
 
 ## Rollback
 
-Simply delete the wrapper:
+Use the built-in uninstall command:
+```bash
+find --uninstall
+```
+
+Or manually delete the wrapper:
 ```bash
 rm ~/.local/bin/find
 # Original find at /usr/bin/find takes over immediately
-```
-
-Or use:
-```bash
-make uninstall
 ```
 
 ## Platform Support
@@ -119,7 +160,11 @@ make uninstall
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions welcome! Please feel free to submit a Pull Request.
 
 ## Author
 

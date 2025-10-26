@@ -1,0 +1,54 @@
+{
+  "name": "@light-merlin-dark/smart-find",
+  "version": "1.0.0",
+  "description": "Intelligent find wrapper that auto-excludes noise directories. CLI tool. Zero deps, pure bash.",
+  "bin": {
+    "smart-find": "bin/find",
+    "smart-find-setup": "scripts/setup.sh"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "preuninstall": "node scripts/preuninstall.js"
+  },
+  "keywords": [
+    "find",
+    "cli",
+    "search",
+    "filesystem",
+    "ai-tools",
+    "claude-code",
+    "productivity",
+    "developer-tools",
+    "node-modules",
+    "bash"
+  ],
+  "author": "Merlin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/light-merlin-dark/smart-find.git"
+  },
+  "homepage": "https://github.com/light-merlin-dark/smart-find#readme",
+  "bugs": {
+    "url": "https://github.com/light-merlin-dark/smart-find/issues"
+  },
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "files": [
+    "bin/find",
+    "scripts/setup.sh",
+    "scripts/postinstall.js",
+    "scripts/preuninstall.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "os": [
+    "darwin",
+    "linux"
+  ]
+}

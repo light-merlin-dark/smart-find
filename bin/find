@@ -6,9 +6,166 @@
 # Bypass via env var
 [[ "$SMART_FIND" == "0" ]] && exec /usr/bin/find "$@"
 
+# Configuration
+CONFIG_DIR="$HOME/.config/smart-find"
+CONFIG_FILE="$CONFIG_DIR/config"
+BUILTIN_DIRS=(node_modules .git dist build out .next .nuxt target vendor .turbo .cache coverage __pycache__)
+
+# Self-uninstall capability
+if [[ "$1" == "--uninstall" ]]; then
+  INSTALL_DIR="$HOME/.local/bin"
+  SCRIPT_NAME="find"
+  BACKUP_SUFFIX=".backup"
+
+  echo "Smart Find - Uninstalling..."
+  echo ""
+
+  if [[ -f "$INSTALL_DIR/$SCRIPT_NAME" ]]; then
+    rm "$INSTALL_DIR/$SCRIPT_NAME"
+    echo "✅ Removed $INSTALL_DIR/$SCRIPT_NAME"
+  else
+    echo "⚠️  Smart find not found at $INSTALL_DIR/$SCRIPT_NAME"
+  fi
+
+  if [[ -f "$INSTALL_DIR/$SCRIPT_NAME$BACKUP_SUFFIX" ]]; then
+    mv "$INSTALL_DIR/$SCRIPT_NAME$BACKUP_SUFFIX" "$INSTALL_DIR/$SCRIPT_NAME"
+    echo "✅ Restored backup to $INSTALL_DIR/$SCRIPT_NAME"
+  fi
+
+  echo ""
+  echo "Uninstall complete. Original find restored."
+  echo "Note: PATH modifications in ~/.zshrc and ~/.bashrc remain."
+  echo "      (They're harmless but you can remove them manually if desired)"
+  exit 0
+fi
+
+# Configuration management: --config or --list-ignored
+if [[ "$1" == "--config" ]] || [[ "$1" == "--list-ignored" ]]; then
+  echo "Smart Find Configuration"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo ""
+  echo "Built-in (always active):"
+  for dir in "${BUILTIN_DIRS[@]}"; do
+    echo "  • $dir"
+  done
+  echo ""
+
+  if [[ -f "$CONFIG_FILE" ]]; then
+    USER_DIRS=()
+    while IFS= read -r line; do
+      # Skip empty lines and comments
+      [[ -z "$line" || "$line" =~ ^# ]] && continue
+      USER_DIRS+=("$line")
+    done < "$CONFIG_FILE"
+
+    if [[ ${#USER_DIRS[@]} -gt 0 ]]; then
+      echo "User-defined (~/.config/smart-find/config):"
+      for dir in "${USER_DIRS[@]}"; do
+        echo "  • $dir"
+      done
+      echo ""
+      echo "Total: $((${#BUILTIN_DIRS[@]} + ${#USER_DIRS[@]})) directories excluded"
+    else
+      echo "User-defined: none"
+      echo ""
+      echo "Total: ${#BUILTIN_DIRS[@]} directories excluded"
+    fi
+  else
+    echo "User-defined: none"
+    echo ""
+    echo "Total: ${#BUILTIN_DIRS[@]} directories excluded"
+  fi
+  exit 0
+fi
+
+# Configuration management: --add-ignore
+if [[ "$1" == "--add-ignore" ]]; then
+  if [[ -z "$2" ]]; then
+    echo "❌ Error: --add-ignore requires a directory name"
+    echo "Usage: find --add-ignore <directory>"
+    exit 1
+  fi
+
+  DIR_NAME="$2"
+
+  # Validate directory name (no slashes, no wildcards)
+  if [[ "$DIR_NAME" =~ [/\*\?] ]]; then
+    echo "❌ Error: Invalid directory name '$DIR_NAME'"
+    echo "Directory name must not contain: / * ?"
+    exit 1
+  fi
+
+  # Check if it's a built-in directory
+  for builtin in "${BUILTIN_DIRS[@]}"; do
+    if [[ "$DIR_NAME" == "$builtin" ]]; then
+      echo "⚠️  '$DIR_NAME' is already a built-in ignored directory"
+      exit 0
+    fi
+  done
+
+  # Create config directory if it doesn't exist
+  mkdir -p "$CONFIG_DIR"
+
+  # Check for duplicates in user config
+  if [[ -f "$CONFIG_FILE" ]] && grep -Fxq "$DIR_NAME" "$CONFIG_FILE" 2>/dev/null; then
+    echo "⚠️  '$DIR_NAME' is already in your ignore list"
+    exit 0
+  fi
+
+  # Add to config file
+  echo "$DIR_NAME" >> "$CONFIG_FILE"
+  echo "✅ Added '$DIR_NAME' to ~/.config/smart-find/config"
+  exit 0
+fi
+
+# Configuration management: --remove-ignore
+if [[ "$1" == "--remove-ignore" ]]; then
+  if [[ -z "$2" ]]; then
+    echo "❌ Error: --remove-ignore requires a directory name"
+    echo "Usage: find --remove-ignore <directory>"
+    exit 1
+  fi
+
+  DIR_NAME="$2"
+
+  # Check if it's a built-in directory
+  for builtin in "${BUILTIN_DIRS[@]}"; do
+    if [[ "$DIR_NAME" == "$builtin" ]]; then
+      echo "❌ Error: '$DIR_NAME' is a built-in directory (cannot be removed)"
+      exit 1
+    fi
+  done
+
+  # Check if config file exists
+  if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "❌ Error: '$DIR_NAME' not found in ignore list (no config file exists)"
+    exit 1
+  fi
+
+  # Check if directory is in config
+  if ! grep -Fxq "$DIR_NAME" "$CONFIG_FILE" 2>/dev/null; then
+    echo "❌ Error: '$DIR_NAME' not found in ignore list"
+    exit 1
+  fi
+
+  # Remove from config file
+  grep -Fxv "$DIR_NAME" "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+  echo "✅ Removed '$DIR_NAME' from ~/.config/smart-find/config"
+  exit 0
+fi
+
+# Load user configuration and merge with built-in defaults
+EXCLUDED_DIRS=("${BUILTIN_DIRS[@]}")
+if [[ -f "$CONFIG_FILE" ]]; then
+  while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    EXCLUDED_DIRS+=("$line")
+  done < "$CONFIG_FILE"
+fi
+
 # Check for --raw flag or explicit excluded directory search
 RAW_MODE=false
-EXCLUDED_DIRS=(node_modules .git dist build .next .nuxt target vendor .turbo .cache coverage __pycache__)
 
 for arg in "$@"; do
   if [[ "$arg" == "--raw" ]]; then
@@ -36,17 +193,10 @@ if [[ "$RAW_MODE" == "true" ]]; then
 fi
 
 # Apply smart exclusions (BSD/macOS compatible syntax)
-exec /usr/bin/find "$@" \
-  -not -path '*/node_modules/*' \
-  -not -path '*/.git/*' \
-  -not -path '*/dist/*' \
-  -not -path '*/build/*' \
-  -not -path '*/out/*' \
-  -not -path '*/.next/*' \
-  -not -path '*/.nuxt/*' \
-  -not -path '*/target/*' \
-  -not -path '*/vendor/*' \
-  -not -path '*/.turbo/*' \
-  -not -path '*/.cache/*' \
-  -not -path '*/coverage/*' \
-  -not -path '*/__pycache__/*'
+# Build exclusion arguments dynamically from EXCLUDED_DIRS array
+EXCLUSION_ARGS=()
+for dir in "${EXCLUDED_DIRS[@]}"; do
+  EXCLUSION_ARGS+=(-not -path "*/$dir/*")
+done
+
+exec /usr/bin/find "$@" "${EXCLUSION_ARGS[@]}"
