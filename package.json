@@ -1,6 +1,6 @@
 {
   "name": "@light-merlin-dark/smart-find",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Intelligent find wrapper that auto-excludes noise directories. CLI tool. Zero deps, pure bash.",
   "bin": {
     "smart-find": "bin/find",
