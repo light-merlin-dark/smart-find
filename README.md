@@ -196,4 +196,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-Built by [@EnchantedRobot](https://twitter.com/EnchantedRobot)
+Built by [Robert E. Beckner III (Merlin)](https://rbeckner.com)
