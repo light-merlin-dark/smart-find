@@ -6,7 +6,9 @@ INSTALL_DIR="$HOME/.local/bin"
 SCRIPT_NAME="find"
 BACKUP_SUFFIX=".backup"
 SHELL_RC_ZSH="$HOME/.zshrc"
+SHELL_PROFILE_ZSH="$HOME/.zprofile"
 SHELL_RC_BASH="$HOME/.bashrc"
+SHELL_PROFILE="$HOME/.profile"
 
 echo "Smart Find - Installing..."
 echo ""
@@ -32,9 +34,29 @@ if [[ -z "$SMART_FIND_PATH" ]]; then
   exit 1
 fi
 
-# Resolve symlink to get actual script location
-if [[ -L "$SMART_FIND_PATH" ]]; then
-  SMART_FIND_PATH=$(readlink "$SMART_FIND_PATH")
+# Resolve symlink(s) to an absolute path (portable for relative symlinks)
+resolve_path() {
+  local target="$1"
+
+  while [[ -L "$target" ]]; do
+    local link
+    link=$(readlink "$target")
+    if [[ "$link" == /* ]]; then
+      target="$link"
+    else
+      target="$(cd "$(dirname "$target")" && pwd -P)/$link"
+    fi
+  done
+
+  echo "$(cd "$(dirname "$target")" && pwd -P)/$(basename "$target")"
+}
+
+SMART_FIND_PATH="$(resolve_path "$SMART_FIND_PATH")"
+
+if [[ ! -f "$SMART_FIND_PATH" ]]; then
+  echo "❌ Error: resolved smart-find path does not exist:"
+  echo "   $SMART_FIND_PATH"
+  exit 1
 fi
 
 # Copy smart-find to find
@@ -43,24 +65,29 @@ chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
 
 echo "✅ Smart find installed to $INSTALL_DIR/$SCRIPT_NAME"
 
-# Add to PATH if not already there
-if [[ -f "$SHELL_RC_ZSH" ]]; then
-  if ! grep -q '.local/bin' "$SHELL_RC_ZSH" 2>/dev/null; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC_ZSH"
-    echo "✅ Added ~/.local/bin to PATH in $SHELL_RC_ZSH"
-  else
-    echo "✅ PATH already configured in $SHELL_RC_ZSH"
-  fi
-fi
+# Ensure ~/.local/bin is prepended in shell startup files so interception works
+# in interactive and non-interactive shells.
+ensure_prepend_local_bin() {
+  local rc_file="$1"
+  local desired='export PATH="$HOME/.local/bin:$PATH"'
+  local label="$2"
 
-if [[ -f "$SHELL_RC_BASH" ]]; then
-  if ! grep -q '.local/bin' "$SHELL_RC_BASH" 2>/dev/null; then
-    echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$SHELL_RC_BASH"
-    echo "✅ Added ~/.local/bin to PATH in $SHELL_RC_BASH"
+  [[ -f "$rc_file" ]] || return 0
+
+  if grep -Eq '^export PATH=.*\.local/bin' "$rc_file" 2>/dev/null; then
+    awk '!/^export PATH=.*\.local\/bin/' "$rc_file" > "$rc_file.tmp" && mv "$rc_file.tmp" "$rc_file"
+    printf '\n%s\n' "$desired" >> "$rc_file"
+    echo "✅ Updated PATH precedence in $label"
   else
-    echo "✅ PATH already configured in $SHELL_RC_BASH"
+    printf '\n%s\n' "$desired" >> "$rc_file"
+    echo "✅ Added ~/.local/bin to PATH in $label"
   fi
-fi
+}
+
+ensure_prepend_local_bin "$SHELL_RC_ZSH" "$SHELL_RC_ZSH"
+ensure_prepend_local_bin "$SHELL_PROFILE_ZSH" "$SHELL_PROFILE_ZSH"
+ensure_prepend_local_bin "$SHELL_RC_BASH" "$SHELL_RC_BASH"
+ensure_prepend_local_bin "$SHELL_PROFILE" "$SHELL_PROFILE"
 
 echo ""
 echo "Installation complete! Reload your shell:"

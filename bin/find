@@ -173,13 +173,17 @@ for arg in "$@"; do
     break
   fi
 
-  # Check if user is explicitly searching an excluded directory (path arguments)
-  for dir in "${EXCLUDED_DIRS[@]}"; do
-    if [[ "$arg" == *"$dir"* ]] && [[ "$arg" == ./* || "$arg" == /* || "$arg" == */* ]]; then
-      RAW_MODE=true
-      break 2
-    fi
-  done
+  # Check if user is explicitly searching an excluded directory (path arguments).
+  # Match only exact path segments to avoid substring false positives
+  # (e.g. "out" matching "router").
+  if [[ "$arg" == ./* || "$arg" == /* || "$arg" == */* ]]; then
+    for dir in "${EXCLUDED_DIRS[@]}"; do
+      if [[ "$arg" == "$dir" || "$arg" == */"$dir" || "$arg" == */"$dir"/* ]]; then
+        RAW_MODE=true
+        break 2
+      fi
+    done
+  fi
 done
 
 # If --raw flag or explicit excluded dir search, use raw find (without --raw flag)
@@ -193,10 +197,11 @@ if [[ "$RAW_MODE" == "true" ]]; then
 fi
 
 # Apply smart exclusions (BSD/macOS compatible syntax)
-# Build exclusion arguments dynamically from EXCLUDED_DIRS array
+# Build exclusion arguments dynamically from EXCLUDED_DIRS array.
+# Exclude both the directory entry itself and everything under it.
 EXCLUSION_ARGS=()
 for dir in "${EXCLUDED_DIRS[@]}"; do
-  EXCLUSION_ARGS+=(-not -path "*/$dir/*")
+  EXCLUSION_ARGS+=(-not -path "*/$dir" -not -path "*/$dir/*")
 done
 
 exec /usr/bin/find "$@" "${EXCLUSION_ARGS[@]}"
